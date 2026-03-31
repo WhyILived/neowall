@@ -248,6 +248,12 @@ compositor_sources = files(
   'src/compositor/compositor_surface.c',
 )
 
+# Constellation sources (WIL integration)
+constellation_sources = files(
+  'src/constellation/constellation_state.c',
+  'src/constellation/constellation_api.c',
+)
+
 # Wayland protocol sources (pre-generated, only when Wayland backend enabled)
 wayland_protocol_sources = []
 if has_wayland
@@ -317,6 +323,7 @@ all_sources = (
   render_sources +
   image_sources +
   compositor_sources +
+  constellation_sources +
   wayland_protocol_sources +
   wayland_sources +
   x11_sources

@@ -12,6 +12,7 @@
 #include "config_access.h"
 #include "constants.h"
 #include "compositor.h"
+#include "constellation.h"
 
 /* Forward declarations */
 extern void handle_signal_from_fd(struct neowall_state *state, int signum);
@@ -528,7 +529,8 @@ void event_loop_run(struct neowall_state *state) {
 
     /* Base file descriptors - always polled */
     #define BASE_FD_COUNT 4
-    #define MAX_POLL_FDS (BASE_FD_COUNT + MAX_OUTPUTS)
+    #define CONSTELLATION_FD_INDEX 4
+    #define MAX_POLL_FDS (BASE_FD_COUNT + 1 + MAX_OUTPUTS)
 
     struct pollfd fds[MAX_POLL_FDS];
     fds[0].fd = compositor_fd;  /* -1 if no compositor, valid fd for Wayland/X11 */
@@ -540,7 +542,13 @@ void event_loop_run(struct neowall_state *state) {
     fds[3].fd = state->signal_fd;
     fds[3].events = POLLIN;
 
-    int num_fds = BASE_FD_COUNT;  /* Will be increased dynamically for frame timers */
+    /* Constellation socket - optional, only if enabled */
+    bool constellation_active = atomic_load_explicit(&state->constellation_enabled, memory_order_acquire);
+    int constellation_fd = constellation_active ? constellation_get_socket_fd() : -1;
+    fds[CONSTELLATION_FD_INDEX].fd = constellation_fd;
+    fds[CONSTELLATION_FD_INDEX].events = constellation_fd >= 0 ? POLLIN : 0;
+
+    int num_fds = constellation_active ? (BASE_FD_COUNT + 1) : BASE_FD_COUNT;
 
     /* Initial render for all outputs - use read lock */
     pthread_rwlock_rdlock(&state->output_list_lock);
@@ -773,6 +781,11 @@ void event_loop_run(struct neowall_state *state) {
                     log_debug("Received signal %d via signalfd", fdsi.ssi_signo);
                     handle_signal_from_fd(state, fdsi.ssi_signo);
                 }
+            }
+
+            /* Check constellation socket - WIL IPC */
+            if (constellation_active && fds[CONSTELLATION_FD_INDEX].revents & POLLIN) {
+                constellation_handle_socket_events();
             }
 
             /* Check frame timer fds - high-precision frame pacing for vsync-off shaders */

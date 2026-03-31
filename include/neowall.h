@@ -25,6 +25,7 @@ typedef atomic_int atomic_int_t;
 /* Forward declarations */
 struct neowall_state;
 struct compositor_backend;
+struct constellation_state;
 
 /* Global application state */
 struct neowall_state {
@@ -87,6 +88,10 @@ struct neowall_state {
     /* ===== STATISTICS ===== */
     uint64_t frames_rendered;
     uint64_t errors_count;
+
+    /* ===== CONSTELLATION (WIL integration) ===== */
+    struct constellation_state *constellation;
+    atomic_bool_t constellation_enabled;
 };
 
 /* Note: Compositor initialization is now handled via compositor_backend_init()

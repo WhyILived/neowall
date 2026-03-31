@@ -17,6 +17,7 @@
 #include "compositor.h"
 #include "egl/egl_core.h"
 #include "output/output.h"
+#include "constellation.h"
 
 /* Get path to the set-index command file */
 static const char *get_set_index_file_path(void) {
@@ -905,6 +906,13 @@ int main(int argc, char *argv[]) {
 
     log_info("Compositor backend initialized: %s", state.compositor_backend->name);
     log_info("Description: %s", state.compositor_backend->description);
+
+    /* Initialize constellation system (WIL integration) */
+    constellation_state_init();
+    if (constellation_init(&state)) {
+        atomic_store_explicit(&state.constellation_enabled, true, memory_order_release);
+        log_info("Constellation socket listening at %s", constellation_get_socket_path());
+    }
 
     /* Initialize EGL/OpenGL */
     if (!egl_core_init(&state)) {
